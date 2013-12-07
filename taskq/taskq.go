@@ -1,4 +1,4 @@
-// Package taskq implements a task-queue with a simple retry model.
+// Package taskq implements a task queue with a simple retry model.
 package taskq
 
 import (
@@ -8,8 +8,10 @@ import (
 	"time"
 )
 
-// Task is the basic execution unit.
+// Task is the execution unit.
 type Task interface {
+	// Do executes the task. Errors returned are logged to the default
+	// logger.
 	Do() error
 }
 
@@ -134,21 +136,17 @@ func (r *retryState) reset(q *Queue) {
 func (q *Queue) worker() {
 	defer q.waitg.Done()
 	var retry retryState
-	var t Task
-	var ok bool
 	retry.reset(q)
 	for {
-		t, ok = <-q.taskc
+		t, ok := <-q.taskc
 		if !ok {
 			break
 		}
-	retry:
 		q.throttle()
-		err := t.Do()
-		if err != nil {
+		for err := t.Do(); err != nil; err = t.Do() {
 			log.Println(err)
-			if retry.backoff() {
-				goto retry
+			if !retry.backoff() {
+				break
 			}
 		}
 		retry.reset(q)
