@@ -137,11 +137,7 @@ func (q *Queue) worker() {
 	defer q.waitg.Done()
 	var retry retryState
 	retry.reset(q)
-	for {
-		t, ok := <-q.taskc
-		if !ok {
-			break
-		}
+	for t := range q.taskc {
 		q.throttle()
 		for err := t.Do(); err != nil; err = t.Do() {
 			log.Println(err)
