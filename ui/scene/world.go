@@ -92,7 +92,7 @@ func recoverError(err *error) {
 func (w *World) initContexts() (rerr error) {
 	defer recoverError(&rerr)
 	stageIds := map[Stage]void{}
-	for i := 0; i < len(w.contexts); i++ {
+	for _ = range w.contexts {
 		ctx := <-w.initc
 		stageIds[ctx.stageId] = void{}
 	}
@@ -115,7 +115,7 @@ func (w *World) initContexts() (rerr error) {
 	for i := range w.contexts {
 		ctx := &w.contexts[i]
 		ctx.req.slots = make([]*columnSlot, len(ctx.req.dest))
-		for i := 0; i < len(ctx.req.dest); i++ {
+		for i := range ctx.req.dest {
 			ctx.req.slots[i] = w.findSlot(ctx.req.dest[i])
 		}
 		ctx.req.copy()
@@ -186,7 +186,7 @@ func (w *World) declare(columns []Column) {
 	for _, col := range columns {
 		typ := col.Type().(reflect.Type)
 		if typ == nil {
-			panic(fmt.Errorf("scene: column %t returns invalid type", col))
+			panic(fmt.Errorf("scene: column %T returns invalid type", col))
 		}
 		_, ok := w.colByType[typ]
 		if ok {
@@ -211,6 +211,9 @@ func (w *World) declare(columns []Column) {
 }
 
 func (w *World) acquire(req *columnReq) {
+	if len(req.slots) == 0 {
+		return
+	}
 	w.slotmu.Lock()
 	defer w.slotmu.Unlock()
 loop:
@@ -232,6 +235,9 @@ loop:
 }
 
 func (w *World) release(req *columnReq) {
+	if len(req.slots) == 0 {
+		return
+	}
 	w.slotmu.Lock()
 	defer w.slotmu.Unlock()
 	for _, slot := range req.slots {
@@ -240,11 +246,12 @@ func (w *World) release(req *columnReq) {
 	}
 }
 
-func (w *World) Begin() Tx {
+func (w *World) Edit() Tx {
 	w.stop()
 	return Tx{w}
 }
 
+/*
 func (w *World) Create(data interface{}) Ref {
 	w.stop()
 	defer w.start()
@@ -256,12 +263,16 @@ func (w *World) Delete(node Ref) {
 	defer w.start()
 	w.delete(node)
 }
+*/
 
 func (w *World) create(data interface{}) Ref {
 	typ := reflect.TypeOf(data)
 	c := w.colByType[typ]
 	if c == nil {
-		panic(fmt.Errorf("scene: no column for type %t", data))
+		for ty, col := range w.colByType {
+			fmt.Printf("%T - %T\n", ty, col)
+		}
+		panic(fmt.Errorf("scene: no column for type %T", data))
 	}
 	ref := w.alloc(c)
 	c.Add(ref, data)
@@ -283,4 +294,11 @@ func (w *World) alloc(c Column) Ref {
 }
 
 func (w *World) delete(node Ref) {
+}
+
+func (w *World) set(node Ref, data interface{}) {
+	col := w.nodes[node]
+	if col != nil {
+		col.Set(node, data)
+	}
 }

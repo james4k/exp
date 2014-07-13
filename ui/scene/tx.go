@@ -15,13 +15,14 @@ func (t Tx) Delete(node Ref) {
 // Get retrieves values for node by copying to the pointers passed
 // into data. Panics if node is invalid or data for all types was not
 // found for the node.
-func (t Tx) Get(node Ref, data ...interface{}) {
+func (t Tx) Get(node Ref, data interface{}) {
 }
 
-// Put assigns data for the specified node. Only data of types used in
+// Set assigns data for the specified node. Only data of types used in
 // the creation of the node may be used. Panics if node is invalid or
 // data for all types was not found for the node.
-func (t Tx) Put(node Ref, data ...interface{}) {
+func (t Tx) Set(node Ref, data interface{}) {
+	t.w.set(node, data)
 }
 
 // Commit completes the transaction.

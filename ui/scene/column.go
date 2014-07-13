@@ -2,15 +2,13 @@ package scene
 
 import "reflect"
 
-// world should own a column by default, until a system wants it.
-
-// Column is a collection of data of the same type.
+// Column is a collection of nodes of the same type.
 type Column interface {
 	Type() interface{}
 	Add(Ref, interface{})
 	Del(Ref)
 	Get(Ref, interface{})
-	Put(Ref, interface{})
+	Set(Ref, interface{})
 }
 
 type column struct {
@@ -44,7 +42,7 @@ func (c column) Get(node Ref, data interface{}) {
 	}
 }
 
-func (c column) Put(node Ref, data interface{}) {
+func (c column) Set(node Ref, data interface{}) {
 	// TODO: check if data is indirect and dereference
 	c.m[node] = data
 }

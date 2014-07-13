@@ -8,8 +8,10 @@ import "reflect"
 type Stage int
 
 const (
-	DefaultStage Stage = 0   // most work is done in the default stage
-	OutputStage        = 100 // scene is rendered to screen
+	DefaultStage Stage = 0 // most work is done in the default stage
+	LayoutStage        = 500
+	StyleStage         = 700
+	OutputStage        = 1000 // scene is rendered to screen
 )
 
 // Subsystem represents an independent process in the world, and runs in
@@ -83,4 +85,10 @@ func (c *Context) release() {
 func (c *Context) acquire() {
 	c.world.acquire(&c.req)
 	c.req.copy()
+}
+
+// FIXME: This shit is wrong and broken on many levels.
+// Alloc returns a new reference slot for the column.
+func (c *Context) Alloc(col Column) Ref {
+	return c.world.alloc(col)
 }
