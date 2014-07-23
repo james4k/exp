@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"log"
 
-	"j4k.co/ui"
-	"j4k.co/ui/examples/internal/blendish"
-	"j4k.co/ui/glfwui"
+	"j4k.co/exp/ui"
+	"j4k.co/exp/ui/examples/internal/blendish"
+	"j4k.co/exp/ui/glfwui"
 )
 
 // TODO: make ui-todo and other 'real' apps .. should expose some holes

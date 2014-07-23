@@ -1,9 +1,9 @@
 package main
 
 import (
-	"j4k.co/ui"
-	bnd "j4k.co/ui/examples/internal/blendish"
-	"j4k.co/ui/glfwui"
+	"j4k.co/exp/ui"
+	bnd "j4k.co/exp/ui/examples/internal/blendish"
+	"j4k.co/exp/ui/glfwui"
 )
 
 func draw(wnd *glfwui.Window, body ui.View) {

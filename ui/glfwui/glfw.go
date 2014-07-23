@@ -7,8 +7,7 @@ import (
 	"image"
 	"runtime"
 
-	"j4k.co/ui"
-	//"j4k.co/exp/ui/graphics"
+	"j4k.co/exp/ui"
 
 	"github.com/go-gl/glfw3"
 )
