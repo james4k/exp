@@ -68,7 +68,7 @@ const (
 var dirs = filepath.SplitList(os.Getenv("GOPATH"))
 
 func init() {
-	const assets = "src/j4k.co/ui/examples/internal/blendish"
+	const assets = "src/j4k.co/exp/ui/examples/internal/blendish"
 	for i := range dirs {
 		dirs[i] = filepath.Join(dirs[i], assets)
 		break // only care about first

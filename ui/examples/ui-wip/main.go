@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"image"
 	"log"
 
 	"j4k.co/exp/ui"
@@ -27,37 +28,37 @@ func main() {
 }
 
 func window() {
-	wnd, err := glfwui.Open(500, 500, "ui-zoo")
+	wnd, err := glfwui.Open(500, 500, "ui-wip")
 	if err != nil {
 		log.Fatalln(err)
 	}
-	err = ui.DispatchEvents(wnd, &zooApp{wnd: wnd})
+	err = ui.DispatchEvents(wnd, &app{wnd: wnd})
 	if err != nil {
 		log.Fatalln(err)
 	}
 }
 
-type zooApp struct {
+type app struct {
 	ui.Box
 	wnd *glfwui.Window
 }
 
-func (z *zooApp) Run(ctl *ui.Controller) {
+func (a *app) Run(ctl *ui.Controller) {
 	ctl.Append(&clickCounter{})
 
-	z.wnd.MakeContextCurrent()
-	defer z.wnd.DetachContext()
+	a.wnd.MakeContextCurrent()
+	defer a.wnd.DetachContext()
 
 	blendish.Init()
-	draw(z.wnd, z)
-	z.wnd.SwapBuffers()
+	draw(a.wnd, a)
+	a.wnd.SwapBuffers()
 	for {
 		_, ok := ctl.Listen()
 		if !ok {
 			return
 		}
-		draw(z.wnd, z)
-		z.wnd.SwapBuffers()
+		draw(a.wnd, a)
+		a.wnd.SwapBuffers()
 	}
 }
 
@@ -67,11 +68,17 @@ type clickCounter struct {
 
 func (c *clickCounter) Run(ctl *ui.Controller) {
 	var (
-		btn    = button{text: "Click", onclick: ctl}
+		btn    = button{text: "Click", onclick: clicky{}}
 		lbl    = label{text: "0 click(s)"}
 		clicks = 0
 	)
 	ctl.Append(&btn, &lbl)
+	{
+		x, y := 10, 10
+		btn.SetBounds(image.Rect(x, y, x+80, y+blendish.WidgetHeight))
+		x += 80
+		lbl.SetBounds(image.Rect(x, y, x+80, y+blendish.WidgetHeight))
+	}
 	for {
 		event, ok := ctl.Listen()
 		if !ok {

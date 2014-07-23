@@ -71,6 +71,10 @@ func (b *Box) Bounds() image.Rectangle {
 	return b.bounds
 }
 
+func (b *Box) SetBounds(rect image.Rectangle) {
+	b.bounds = rect
+}
+
 func (b *Box) hitTest(pt image.Point) *Box {
 	if pt.In(b.bounds) {
 		for _, k := range b.kids {
