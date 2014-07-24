@@ -125,6 +125,6 @@ func Label(x, y, w, h int, iconID int, label string) {
 func Button(x, y, w, h int, corners CornerFlags, state WidgetState, label string) {
 	clabel := C.CString(label)
 	defer C.free(unsafe.Pointer(clabel))
-	C.bndRadioButton(vg, C.float(x), C.float(y), C.float(w), C.float(h),
+	C.bndToolButton(vg, C.float(x), C.float(y), C.float(w), C.float(h),
 		C.int(corners), C.BNDwidgetState(state), -1, clabel)
 }
