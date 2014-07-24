@@ -64,29 +64,30 @@ func (a *app) Run(ctl *ui.Controller) {
 
 type clickCounter struct {
 	ui.Box
+	btn    button
+	lbl    label
+	clicks int
+}
+
+func (c *clickCounter) increment() {
+	c.clicks++
+	c.lbl.text = fmt.Sprintf("%d click(s)", c.clicks)
 }
 
 func (c *clickCounter) Run(ctl *ui.Controller) {
-	var (
-		btn    = button{text: "Click", onclick: clicky{}}
-		lbl    = label{text: "0 click(s)"}
-		clicks = 0
-	)
-	ctl.Append(&btn, &lbl)
+	c.btn = button{text: "Click", onclick: c.increment}
+	c.lbl = label{text: "0 click(s)"}
+	ctl.Append(&c.btn, &c.lbl)
 	{
 		x, y := 10, 10
-		btn.SetBounds(image.Rect(x, y, x+80, y+blendish.WidgetHeight))
+		c.btn.SetBounds(image.Rect(x, y, x+80, y+blendish.WidgetHeight))
 		x += 80
-		lbl.SetBounds(image.Rect(x, y, x+80, y+blendish.WidgetHeight))
+		c.lbl.SetBounds(image.Rect(x, y, x+80, y+blendish.WidgetHeight))
 	}
 	for {
-		event, ok := ctl.Listen()
+		_, ok := ctl.Listen()
 		if !ok {
 			return
-		}
-		if _, ok = event.(clicky); ok {
-			clicks++
-			lbl.text = fmt.Sprintf("%d click(s)", clicks)
 		}
 	}
 }
@@ -111,7 +112,7 @@ type button struct {
 	ui.Box
 	text    string
 	state   buttonState
-	onclick interface{}
+	onclick func()
 }
 
 func (b *button) Run(ctl *ui.Controller) {
@@ -120,7 +121,6 @@ func (b *button) Run(ctl *ui.Controller) {
 		if !ok {
 			return
 		}
-		fmt.Printf("button got event %#v\n", event)
 		if _, ok = event.(ui.MouseEnter); ok {
 			if !b.hover(ctl) {
 				return
@@ -137,10 +137,10 @@ func (b *button) hover(ctl *ui.Controller) bool {
 		if !ok {
 			return false
 		}
-		switch m := event.(type) {
-		case ui.MouseLeave:
+		if _, ok = event.(ui.MouseLeave); ok {
 			return true
-		case ui.MouseUpdate:
+		}
+		if m, ok := event.(ui.MouseUpdate); ok {
 			if m.Left {
 				if !b.pressed(ctl) {
 					return false
@@ -161,8 +161,9 @@ func (b *button) pressed(ctl *ui.Controller) bool {
 		if m, ok := event.(ui.MouseUpdate); ok {
 			if !m.Left {
 				if m.Point.In(b.Bounds()) {
-					println("click")
-					//ctl.Dispatch(b.onclick, clicky{})
+					if b.onclick != nil {
+						b.onclick()
+					}
 				}
 				return true
 			}

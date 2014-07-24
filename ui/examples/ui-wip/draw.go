@@ -22,7 +22,7 @@ func drawView(view ui.View) {
 			-1, v.text)
 	case *button:
 		bnd.Button(rect.Min.X, rect.Min.Y, rect.Dx(), rect.Dy(),
-			0, widgetState(v.state), "Default")
+			0, widgetState(v.state), v.text)
 	}
 	for i := 0; i < view.Subviews(); i++ {
 		drawView(view.Sub(i))
