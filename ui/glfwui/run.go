@@ -3,6 +3,7 @@ package glfwui
 import (
 	"log"
 	"runtime"
+	"time"
 
 	glfw "github.com/go-gl/glfw3"
 )
@@ -41,6 +42,7 @@ func ListenForEvents() error {
 	defer glfw.Terminate()
 	setupGlfw()
 
+	t0 := time.Now()
 	for {
 		select {
 		case fn, ok := <-mainc:
@@ -49,7 +51,24 @@ func ListenForEvents() error {
 			}
 			fn()
 		default:
-			glfw.WaitEvents()
+			// when under heavy activity, sleep and poll instead to
+			// lessen sysmon() churn in Go's scheduler. with this
+			// method, OS X's Activity Monitor reports over 1000 sleeps
+			// a second, which is ridiculous, but better than 3000.
+			// haven't been able to create a minimal reproduction of
+			// this, but when tweaking values in runtime/proc.c's sysmon
+			// func, it is obvious this is a scheduler issue.
+			// TODO: best workaround is probably to write this entire
+			// loop in C, which should keep the sysmon thread from
+			// waking up (from these syscalls, anyways).
+			dt := time.Now().Sub(t0)
+			if dt < 150*time.Millisecond {
+				time.Sleep(15 * time.Millisecond)
+				glfw.PollEvents()
+			} else {
+				t0 = time.Now()
+				glfw.WaitEvents()
+			}
 		}
 	}
 	return nil
@@ -60,6 +79,7 @@ func setupGlfw() {
 
 	glfw.WindowHint(glfw.Resizable, 1)
 	glfw.WindowHint(glfw.Visible, 1)
+	glfw.WindowHint(glfw.Decorated, 1)
 	glfw.WindowHint(glfw.ClientApi, glfw.OpenglApi)
 
 	glfw.WindowHint(glfw.OpenglForwardCompatible, 1)

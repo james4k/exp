@@ -11,10 +11,15 @@ type View interface {
 	Sub(i int) View
 }
 
-// Component is a View which responds to events and manages subviews.
+// Component is a View which receives events and manages subviews.
 type Component interface {
 	View
-	Run(*Controller)
+	Receiver
+}
+
+// Receiver receives events.
+type Receiver interface {
+	Receive(ctl *Controller, event interface{})
 }
 
 // Box describes the spatial and hierarchical properties of a View.
@@ -24,7 +29,7 @@ type Box struct {
 	ctl    *Controller
 }
 
-// setup initializes a View and its Box. Boots up Components.
+// setup initializes a View and its Box. Mounts Components.
 func setup(parent *Box, bounds image.Rectangle, view View) {
 	box := view.box()
 	if box == nil {
@@ -35,17 +40,11 @@ func setup(parent *Box, bounds image.Rectangle, view View) {
 	}
 	if comp, ok := view.(Component); ok {
 		ctl := &Controller{
-			box: box,
-		}
-		if parent == nil {
-			ctl.recv = make(chan message, 1)
-			ctl.chain = make(chan message, 1)
-		} else {
-			ctl.recv = make(chan message, 1)
-			ctl.chain = parent.ctl.recv
+			box:  box,
+			comp: comp,
 		}
 		box.ctl = ctl
-		go comp.Run(ctl)
+		comp.Receive(ctl, Mount{})
 	}
 }
 
@@ -88,56 +87,38 @@ func (b *Box) hitTest(pt image.Point) *Box {
 	return nil
 }
 
-func (b *Box) close() {
-	if b.ctl != nil && b.ctl.recv != nil {
-		close(b.ctl.recv)
+func (b *Box) send(event interface{}) {
+	if b.ctl != nil {
+		b.ctl.comp.Receive(b.ctl, event)
 	}
+}
+
+func (b *Box) unmount() {
 	for _, k := range b.kids {
-		k.box().close()
+		k.box().unmount()
 	}
+	b.send(Unmount{})
 }
 
-// message carries an event value
-type message struct {
-	event interface{}
-	done  chan<- message
-}
-
-// Controller controls a view and its subviews, and listens for events.
+// Controller controls a view and its subviews.
 type Controller struct {
-	box   *Box
-	recv  chan message
-	chain chan message
-	msg   message
+	box  *Box
+	comp Component
 }
 
-func (c *Controller) Listen() (event interface{}, ok bool) {
-	if c.msg.done != nil {
-		c.msg.done <- c.msg
-	}
-	msg, ok := <-c.recv
-	if !ok {
-		c.chain = nil
-		c.msg.done = nil
-		return nil, false
-	}
-	event = msg.event
-	c.msg = msg
-	return
-}
-
-func (c *Controller) Append(subviews ...View) {
+func (c *Controller) Mount(subviews ...View) {
 	c.box.kids = append(c.box.kids, subviews...)
 	for _, v := range subviews {
 		setup(c.box, c.box.Bounds(), v)
 	}
 }
 
-func (c *Controller) Remove(subviews ...View) {
+func (c *Controller) Unmount(subviews ...View) {
 	kids := c.box.kids
 	for _, v := range subviews {
 		for i, k := range kids {
 			if k == v {
+				k.box().unmount()
 				copy(kids[i:], kids[i+1:])
 				kids = kids[:len(kids)-1]
 				break

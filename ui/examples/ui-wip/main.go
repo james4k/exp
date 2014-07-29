@@ -7,14 +7,9 @@ import (
 
 	"j4k.co/exp/ui"
 	"j4k.co/exp/ui/examples/internal/blendish"
+	"j4k.co/exp/ui/examples/internal/widget"
 	"j4k.co/exp/ui/glfwui"
 )
-
-// TODO: make ui-todo and other 'real' apps .. should expose some holes
-
-// thoughts are occuring on doing a copy-on-write structure.. and
-// changing the event model to allow for real parallelism...but yeah.
-// may be a pipe dream.
 
 func main() {
 	// run our ui window
@@ -32,7 +27,7 @@ func window() {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	err = ui.DispatchEvents(wnd, &app{wnd: wnd})
+	err = ui.Dispatch(wnd, &app{wnd: wnd})
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -41,132 +36,98 @@ func window() {
 type app struct {
 	ui.Box
 	wnd *glfwui.Window
+
+	drawc chan bool
+	donec chan bool
 }
 
-func (a *app) Run(ctl *ui.Controller) {
-	ctl.Append(&clickCounter{})
+func (a *app) Receive(ctl *ui.Controller, event interface{}) {
+	switch event.(type) {
+	case ui.Mount:
+		a.mount(ctl)
+		a.drawAndSwap()
+	case ui.Unmount:
+		break
+	case ui.SizeUpdate:
+		a.drawAndSwap()
+	default:
+		a.draw()
+	}
+}
 
-	a.wnd.MakeContextCurrent()
-	defer a.wnd.DetachContext()
+func (a *app) mount(ctl *ui.Controller) {
+	cc := clickCounter{}
+	tf := widget.TextField{Text: "Hmm", Caret: [2]int{1, 3}}
+	ctl.Mount(&cc, &tf)
+	{
+		x, y := 10, 10
+		cc.SetBounds(image.Rect(x, y, x+150, y+blendish.WidgetHeight))
+		y += blendish.WidgetHeight + 4
+		tf.SetBounds(image.Rect(x, y, x+150, y+blendish.WidgetHeight))
+	}
+	a.drawc = make(chan bool, 1)
+	a.donec = make(chan bool)
+	go render(a.wnd, a)
+}
 
+func (a *app) draw() {
+	a.drawc <- false
+	<-a.donec
+}
+
+func (a *app) drawAndSwap() {
+	a.drawc <- true
+	<-a.donec
+}
+
+func render(wnd *glfwui.Window, app *app) {
+	wnd.MakeContextCurrent()
+	defer wnd.DetachContext()
 	blendish.Init()
-	draw(a.wnd, a)
-	a.wnd.SwapBuffers()
-	for {
-		_, ok := ctl.Listen()
-		if !ok {
-			return
+	for syncswap := range app.drawc {
+		draw(wnd, app)
+		if !syncswap {
+			app.donec <- true
 		}
-		draw(a.wnd, a)
-		a.wnd.SwapBuffers()
+		wnd.SwapBuffers()
+		if syncswap {
+			app.donec <- true
+		}
 	}
 }
 
 type clickCounter struct {
 	ui.Box
-	btn    button
-	lbl    label
+	button widget.Button
+	label  widget.Label
 	clicks int
 }
 
 func (c *clickCounter) increment() {
 	c.clicks++
-	c.lbl.text = fmt.Sprintf("%d click(s)", c.clicks)
+	c.label.Text = fmt.Sprintf("%d click(s)", c.clicks)
 }
 
-func (c *clickCounter) Run(ctl *ui.Controller) {
-	c.btn = button{text: "Click", onclick: c.increment}
-	c.lbl = label{text: "0 click(s)"}
-	ctl.Append(&c.btn, &c.lbl)
+func (c *clickCounter) Receive(ctl *ui.Controller, event interface{}) {
+	switch event.(type) {
+	case ui.Mount:
+		c.mount(ctl)
+	}
+}
+
+func (c *clickCounter) mount(ctl *ui.Controller) {
+	// FIXME: callbacks for UI 'actions' break the future potential for
+	// parallel execution of siblings, since siblings would be able to
+	// call methods acting on the same state (eg. the parent's state).
+	// The controller should schedule these callbacks... Might look like
+	// ui.ActionFunc(c.increment), etc.. Must not be callable by user.
+	c.button = widget.Button{Text: "Button", OnClick: c.increment}
+	c.label = widget.Label{Text: "0 click(s)"}
+	ctl.Mount(&c.button, &c.label)
 	{
 		x, y := 10, 10
-		c.btn.SetBounds(image.Rect(x, y, x+80, y+blendish.WidgetHeight))
+		c.button.SetBounds(image.Rect(x, y, x+80, y+blendish.WidgetHeight))
 		x += 80
-		c.lbl.SetBounds(image.Rect(x, y, x+80, y+blendish.WidgetHeight))
-	}
-	for {
-		_, ok := ctl.Listen()
-		if !ok {
-			return
-		}
-	}
-}
-
-type label struct {
-	ui.Box
-	text string
-}
-
-type buttonState uint8
-
-const (
-	buttonDefault buttonState = iota
-	buttonHover
-	buttonPressed
-)
-
-type clicky struct {
-}
-
-type button struct {
-	ui.Box
-	text    string
-	state   buttonState
-	onclick func()
-}
-
-func (b *button) Run(ctl *ui.Controller) {
-	for {
-		event, ok := ctl.Listen()
-		if !ok {
-			return
-		}
-		if _, ok = event.(ui.MouseEnter); ok {
-			if !b.hover(ctl) {
-				return
-			}
-			b.state = buttonDefault
-		}
-	}
-}
-
-func (b *button) hover(ctl *ui.Controller) bool {
-	b.state = buttonHover
-	for {
-		event, ok := ctl.Listen()
-		if !ok {
-			return false
-		}
-		if _, ok = event.(ui.MouseLeave); ok {
-			return true
-		}
-		if m, ok := event.(ui.MouseUpdate); ok {
-			if m.Left {
-				if !b.pressed(ctl) {
-					return false
-				}
-				b.state = buttonHover
-			}
-		}
-	}
-}
-
-func (b *button) pressed(ctl *ui.Controller) bool {
-	b.state = buttonPressed
-	for {
-		event, ok := ctl.Listen()
-		if !ok {
-			return false
-		}
-		if m, ok := event.(ui.MouseUpdate); ok {
-			if !m.Left {
-				if m.Point.In(b.Bounds()) {
-					if b.onclick != nil {
-						b.onclick()
-					}
-				}
-				return true
-			}
-		}
+		c.label.SetBounds(image.Rect(x, y, x+80, y+blendish.WidgetHeight))
 	}
 }

@@ -2,24 +2,13 @@ package ui
 
 import "image"
 
-func dispatch(target *Box, event interface{}) {
-	if target.ctl == nil {
-		return
-	}
-	done := make(chan message)
-	target.ctl.recv <- message{
-		event: event,
-		done:  done,
-	}
-	<-done
-}
-
 // master component is generally responsible for doing layout and drawing
 // to screen. sized to the Environment.
 
-func DispatchEvents(env Environment, master Component) error {
+func Dispatch(env Environment, master Component) error {
 	var (
 		root       *Box
+		keyFocus   *Box
 		mouseFocus *Box
 	)
 	{
@@ -30,35 +19,43 @@ func DispatchEvents(env Environment, master Component) error {
 	for {
 		event, ok := env.Listen()
 		if !ok {
-			root.close()
+			root.unmount()
 			return nil
 		}
 		switch e := event.(type) {
+		case KeyDown, KeyUp, KeyRepeat, UnicodeTyped:
+			if keyFocus != nil {
+				keyFocus.send(e)
+			}
 		case MouseUpdate:
-			// TODO: when left mouse button is held down, do not change
-			// target/mouseFocus (also means no hitTest needed)
 			target := mouseFocus
 			if !e.Left {
 				target = root.hitTest(e.Point)
 			}
 			if target != mouseFocus {
 				if mouseFocus != nil {
-					dispatch(mouseFocus, e)
-					dispatch(mouseFocus, MouseLeave{})
+					mouseFocus.send(e)
+					mouseFocus.send(MouseLeave{})
 				}
 				if target != nil {
-					dispatch(target, MouseEnter{})
+					target.send(MouseEnter{})
 				}
 				mouseFocus = target
 			}
 			if target != nil {
-				dispatch(target, e)
+				target.send(e)
+				if e.Left && target != keyFocus {
+					if keyFocus != nil {
+						keyFocus.send(FocusLost{})
+					}
+					keyFocus = target
+					keyFocus.send(FocusGained{})
+				}
 			}
-			dispatch(root, e)
 		case SizeUpdate:
 			root.bounds = image.Rect(0, 0, e.Width, e.Height)
-			dispatch(root, e)
 		}
+		root.send(event)
 	}
 	return nil
 }

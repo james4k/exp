@@ -128,3 +128,11 @@ func Button(x, y, w, h int, corners CornerFlags, state WidgetState, label string
 	C.bndToolButton(vg, C.float(x), C.float(y), C.float(w), C.float(h),
 		C.int(corners), C.BNDwidgetState(state), -1, clabel)
 }
+
+func TextField(x, y, w, h int, corners CornerFlags, state WidgetState, label string, cstart, cend int) {
+	clabel := C.CString(label)
+	defer C.free(unsafe.Pointer(clabel))
+	C.bndTextField(vg, C.float(x), C.float(y), C.float(w), C.float(h),
+		C.int(corners), C.BNDwidgetState(state), -1, clabel,
+		C.int(cstart), C.int(cend))
+}

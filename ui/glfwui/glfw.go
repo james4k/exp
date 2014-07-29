@@ -13,9 +13,10 @@ import (
 )
 
 type Window struct {
-	w      *glfw3.Window
-	eventc chan interface{}
-	waitc  chan struct{}
+	w           *glfw3.Window
+	eventc      chan interface{}
+	waitc       chan struct{}
+	haslistened bool
 
 	mouse ui.MouseUpdate
 }
@@ -56,7 +57,9 @@ func (w *Window) init() {
 	// note: eventc must be unbuffered for the Listen/waitc setup to
 	// work
 	w.eventc = make(chan interface{})
+	w.waitc = make(chan struct{})
 	w.w.SetCharacterCallback(w.onCharPress)
+	w.w.SetKeyCallback(w.onKeyPress)
 	w.w.SetMouseButtonCallback(w.onMouseButton)
 	w.w.SetCursorPositionCallback(w.onCursorPos)
 	w.w.SetSizeCallback(w.onResize)
@@ -84,7 +87,7 @@ func (w *Window) Size() (ww, h int, pixelRatio float32) {
 	return
 }
 
-func (w Window) dispatch(event interface{}) {
+func (w *Window) dispatch(event interface{}) {
 	w.eventc <- event
 	<-w.waitc
 }
@@ -94,8 +97,8 @@ func (w *Window) close() {
 }
 
 func (w *Window) Listen() (event interface{}, ok bool) {
-	if w.waitc == nil {
-		w.waitc = make(chan struct{})
+	if !w.haslistened {
+		w.haslistened = true
 	} else {
 		w.waitc <- struct{}{}
 	}
@@ -110,9 +113,44 @@ func (w *Window) Listen() (event interface{}, ok bool) {
 }
 
 func (w *Window) onCharPress(wnd *glfw3.Window, char uint) {
-	w.dispatch(ui.CharTyped{
-		Char: rune(char),
+	// ignore OS X arrow keys, etc... glfw will get IME support in 3.2
+	// and so input will likely look a lot different eventually,
+	// anyways.
+	if char >= 0xf700 {
+		return
+	}
+	w.dispatch(ui.UnicodeTyped{
+		C: rune(char),
 	})
+}
+
+func (w *Window) onKeyPress(wnd *glfw3.Window, key glfw3.Key, scancode int, action glfw3.Action, mod glfw3.ModifierKey) {
+	var s []byte
+	if mod&glfw3.ModShift != 0 {
+		s = append(s, '$')
+	}
+	if mod&glfw3.ModControl != 0 {
+		s = append(s, '^')
+	}
+	if mod&glfw3.ModAlt != 0 {
+		s = append(s, '~')
+	}
+	// TODO: super?
+	s = translateKey(s, key)
+	switch action {
+	case glfw3.Press:
+		w.dispatch(ui.KeyDown{
+			Key: ui.Key(s),
+		})
+	case glfw3.Release:
+		w.dispatch(ui.KeyUp{
+			Key: ui.Key(s),
+		})
+	case glfw3.Repeat:
+		w.dispatch(ui.KeyRepeat{
+			Key: ui.Key(s),
+		})
+	}
 }
 
 func (w *Window) onMouseButton(wnd *glfw3.Window, btn glfw3.MouseButton, action glfw3.Action, mod glfw3.ModifierKey) {
@@ -137,4 +175,88 @@ func (w *Window) onResize(wnd *glfw3.Window, ww, h int) {
 
 func (w *Window) onClose(wnd *glfw3.Window) {
 	w.close()
+}
+
+var keymap = map[glfw3.Key][]byte{
+	glfw3.KeySpace:      {' '},
+	glfw3.KeyApostrophe: {'\''},
+	glfw3.KeyComma:      {','},
+	glfw3.KeyMinus:      {'-'},
+	glfw3.KeyPeriod:     {'.'},
+	glfw3.KeySlash:      {'/'},
+
+	glfw3.KeySemicolon:    {';'},
+	glfw3.KeyEqual:        {'='},
+	glfw3.KeyLeftBracket:  {'['},
+	glfw3.KeyRightBracket: {']'},
+	glfw3.KeyBackslash:    {'\\'},
+	glfw3.KeyGraveAccent:  {'`'},
+
+	glfw3.KeyEscape:    []byte(ui.Escape),
+	glfw3.KeyEnter:     []byte(ui.Enter),
+	glfw3.KeyTab:       []byte(ui.Tab),
+	glfw3.KeyBackspace: []byte(ui.Backspace),
+	glfw3.KeyInsert:    []byte(ui.Insert),
+	glfw3.KeyDelete:    []byte(ui.Delete),
+	glfw3.KeyLeft:      []byte(ui.Left),
+	glfw3.KeyUp:        []byte(ui.Up),
+	glfw3.KeyRight:     []byte(ui.Right),
+	glfw3.KeyDown:      []byte(ui.Down),
+
+	glfw3.Key0: {'0'},
+	glfw3.Key1: {'1'},
+	glfw3.Key2: {'2'},
+	glfw3.Key3: {'3'},
+	glfw3.Key4: {'4'},
+	glfw3.Key5: {'5'},
+	glfw3.Key6: {'6'},
+	glfw3.Key7: {'7'},
+	glfw3.Key8: {'8'},
+	glfw3.Key9: {'9'},
+
+	glfw3.KeyKp0: {'#', '0'},
+	glfw3.KeyKp1: {'#', '1'},
+	glfw3.KeyKp2: {'#', '2'},
+	glfw3.KeyKp3: {'#', '3'},
+	glfw3.KeyKp4: {'#', '4'},
+	glfw3.KeyKp5: {'#', '5'},
+	glfw3.KeyKp6: {'#', '6'},
+	glfw3.KeyKp7: {'#', '7'},
+	glfw3.KeyKp8: {'#', '8'},
+	glfw3.KeyKp9: {'#', '9'},
+
+	glfw3.KeyA: {'a'},
+	glfw3.KeyB: {'b'},
+	glfw3.KeyC: {'c'},
+	glfw3.KeyD: {'d'},
+	glfw3.KeyE: {'e'},
+	glfw3.KeyF: {'f'},
+	glfw3.KeyG: {'g'},
+	glfw3.KeyH: {'h'},
+	glfw3.KeyI: {'i'},
+	glfw3.KeyJ: {'j'},
+	glfw3.KeyK: {'k'},
+	glfw3.KeyL: {'l'},
+	glfw3.KeyM: {'m'},
+	glfw3.KeyN: {'n'},
+	glfw3.KeyO: {'o'},
+	glfw3.KeyP: {'p'},
+	glfw3.KeyQ: {'q'},
+	glfw3.KeyR: {'r'},
+	glfw3.KeyS: {'s'},
+	glfw3.KeyT: {'t'},
+	glfw3.KeyU: {'u'},
+	glfw3.KeyV: {'v'},
+	glfw3.KeyW: {'w'},
+	glfw3.KeyX: {'x'},
+	glfw3.KeyY: {'y'},
+	glfw3.KeyZ: {'z'},
+}
+
+func translateKey(s []byte, k glfw3.Key) []byte {
+	b, ok := keymap[k]
+	if ok {
+		return append(s, b...)
+	}
+	return s
 }
