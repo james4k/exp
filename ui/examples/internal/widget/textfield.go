@@ -41,6 +41,7 @@ func (t *TextField) Receive(ctl *ui.Controller, event interface{}) {
 }
 
 func (t *TextField) insert(char rune) {
+	t.normalizeCaret()
 	c0 := t.Caret[0]
 	c1 := t.Caret[1]
 	t.Text = t.Text[:c0] + string(char) + t.Text[c1:]
@@ -60,10 +61,12 @@ func (t *TextField) mouseSelect(m ui.MouseUpdate) {
 }
 
 func (t *TextField) keyboard(k ui.Key) {
-	var c0 int
-	shift := k.Shift()
-	if shift {
-		c0 = t.Caret[0]
+	if k.Shift() {
+		c0 := t.Caret[0]
+		defer func() {
+			// keep c0 rooted when holding shift
+			t.Caret[0] = c0
+		}()
 	}
 	switch k.Trim() {
 	case ui.Backspace:
@@ -76,10 +79,6 @@ func (t *TextField) keyboard(k ui.Key) {
 		t.moveForward(shift)
 	default:
 		t.emacs(k)
-	}
-	if shift {
-		// keep c0 rooted when holding shift
-		t.Caret[0] = c0
 	}
 }
 
