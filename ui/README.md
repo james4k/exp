@@ -1,8 +1,14 @@
 # ui
 
 Package ui provides a work-in-progress model for taking user input.
-Everything graphical is up to the user to deal with based on the layout
-structure.
+Everything graphical is up to the user to deal with based on the view
+hierarchy.
+
+To be written:
+Why not concurrent? Well...this will be hard to explain. Will need to
+introduce each approach attempted in detail. Boils down to not
+gaining anything from it except complexity. Introduce your concurrency
+at a higher level where appropriate. Go has a few things for that.
 
 ## Examples
 

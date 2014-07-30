@@ -12,6 +12,16 @@ func (k Key) contains(c rune) bool {
 	return strings.ContainsRune(string(k), c)
 }
 
+// Trim trims out all modifiers.
+func (k Key) Trim() Key {
+	return Key(strings.TrimLeft(string(k), "^~$"))
+}
+
+// Trim trims out the Shift modifier.
+func (k Key) TrimShift() Key {
+	return Key(strings.TrimLeft(string(k), "$"))
+}
+
 // Ctrl checks if Key contains the Control modifier key, represented by '^'.
 func (k Key) Ctrl() bool {
 	return k.contains('^')
@@ -37,43 +47,47 @@ func (k Key) Keypad() (c byte, ok bool) {
 }
 
 const (
-	Escape    Key = "(esc)"
-	Enter         = "(enter)"
-	Tab           = "(tab)"
-	Backspace     = "(bs)"
-	Insert        = "(ins)"
-	Delete        = "(del)"
-	Left          = "(left)"
-	Up            = "(up)"
-	Right         = "(right)"
-	Down          = "(down)"
-	PageUp        = "(pgup)"
-	PageDown      = "(pgdn)"
-	PageHome      = "(home)"
-	PageEnd       = "(end)"
-	F1            = "(f1)"
-	F2            = "(f2)"
-	F3            = "(f3)"
-	F4            = "(f4)"
-	F5            = "(f5)"
-	F6            = "(f6)"
-	F7            = "(f7)"
-	F8            = "(f8)"
-	F9            = "(f9)"
-	F10           = "(f10)"
-	F11           = "(f11)"
-	F12           = "(f12)"
-	F13           = "(f13)"
-	F14           = "(f14)"
-	F15           = "(f15)"
-	F16           = "(f16)"
-	F17           = "(f17)"
-	F18           = "(f18)"
-	F19           = "(f19)"
-	F20           = "(f20)"
-	F21           = "(f21)"
-	F22           = "(f22)"
-	F23           = "(f23)"
-	F24           = "(f24)"
-	F25           = "(f25)"
+	Ctrl  Key = "^"
+	Alt       = "~"
+	Shift     = "$"
+
+	Escape    = "(esc)"
+	Enter     = "(enter)"
+	Tab       = "(tab)"
+	Backspace = "(bs)"
+	Insert    = "(ins)"
+	Delete    = "(del)"
+	Left      = "(left)"
+	Up        = "(up)"
+	Right     = "(right)"
+	Down      = "(down)"
+	PageUp    = "(pgup)"
+	PageDown  = "(pgdn)"
+	PageHome  = "(home)"
+	PageEnd   = "(end)"
+	F1        = "(f1)"
+	F2        = "(f2)"
+	F3        = "(f3)"
+	F4        = "(f4)"
+	F5        = "(f5)"
+	F6        = "(f6)"
+	F7        = "(f7)"
+	F8        = "(f8)"
+	F9        = "(f9)"
+	F10       = "(f10)"
+	F11       = "(f11)"
+	F12       = "(f12)"
+	F13       = "(f13)"
+	F14       = "(f14)"
+	F15       = "(f15)"
+	F16       = "(f16)"
+	F17       = "(f17)"
+	F18       = "(f18)"
+	F19       = "(f19)"
+	F20       = "(f20)"
+	F21       = "(f21)"
+	F22       = "(f22)"
+	F23       = "(f23)"
+	F24       = "(f24)"
+	F25       = "(f25)"
 )

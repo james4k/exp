@@ -27,8 +27,12 @@ func drawView(view ui.View) {
 	case *widget.TextField:
 		// TODO: calculate the amount of text that will fit in the
 		// dimensions, account for the caret position
+		c0, c1 := v.Caret[0], v.Caret[1]
+		if c1 < c0 {
+			c0, c1 = c1, c0
+		}
 		bnd.TextField(rect.Min.X, rect.Min.Y, rect.Dx(), rect.Dy(),
-			0, widgetState(v.State), v.Text, v.Caret[0], v.Caret[1])
+			0, widgetState(v.State), v.Text, c0, c1)
 	}
 	for i := 0; i < view.Subviews(); i++ {
 		drawView(view.Sub(i))
