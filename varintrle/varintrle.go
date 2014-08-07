@@ -1,3 +1,11 @@
+// Package varintrle implements an algorithm similar to varint encoding,
+// but for runs of integers.
+//
+// TODO: get into detail on the format. described briefly in WriteTo's
+// comment.
+//
+// There have been no real tests done to see how this fairs against
+// general compression algorithms.
 package varintrle
 
 import (
@@ -37,11 +45,11 @@ func unzigzag(ux uint64) int64 {
 	return x
 }
 
-// writeVarintRLE encodes a number of integer values using a modified
+// WriteTo writes to w a number of integer values using a modified
 // varint encoding that is optimal for runs of integers of the same size
 // requirements in bytes. Runs of zeros are especially optimal, taking
 // O(1) space.
-func writeVarintRLE(w io.Writer, vals []int64) error {
+func WriteTo(w io.Writer, vals []int64) error {
 	if len(vals) == 0 {
 		return nil
 	}
@@ -102,9 +110,9 @@ func writeVarintRLE(w io.Writer, vals []int64) error {
 	return nil
 }
 
-// readVarintRLE appends all integers read from r to vals and returns
+// ReadFrom appends all integers read from r to vals and returns
 // the new slice.
-func readVarintRLE(vals []int64, r io.Reader) ([]int64, error) {
+func ReadFrom(vals []int64, r io.Reader) ([]int64, error) {
 	var buf [8]byte
 	for {
 		_, err := io.ReadFull(r, buf[:1])

@@ -66,7 +66,7 @@ func TestWriteVarintRLE(t *testing.T) {
 	buf := &bytes.Buffer{}
 	for input, expected := range table {
 		buf.Reset()
-		err := writeVarintRLE(buf, []int64{input})
+		err := WriteTo(buf, []int64{input})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -81,11 +81,11 @@ func TestVarintRLE(t *testing.T) {
 	var vals, actual []int64
 	vals = randIntSlice(20)
 	buf := &bytes.Buffer{}
-	err := writeVarintRLE(buf, vals)
+	err := WriteTo(buf, vals)
 	if err != nil {
 		t.Fatal(err)
 	}
-	actual, err = readVarintRLE(actual, buf)
+	actual, err = ReadFrom(actual, buf)
 	if err != nil && err != io.EOF {
 		t.Fatal(err)
 	}
@@ -99,7 +99,7 @@ func BenchmarkWriteVarintRLERandom(b *testing.B) {
 	vals := randIntSlice(100)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		err := writeVarintRLE(ioutil.Discard, vals)
+		err := WriteTo(ioutil.Discard, vals)
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -110,7 +110,7 @@ func BenchmarkReadVarintRLERandom(b *testing.B) {
 	rand.Seed(1)
 	vals := randIntSlice(100)
 	buf := bytes.NewBuffer(make([]byte, 0, len(vals)*4))
-	err := writeVarintRLE(buf, vals)
+	err := WriteTo(buf, vals)
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -118,7 +118,7 @@ func BenchmarkReadVarintRLERandom(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		r := bytes.NewReader(buf.Bytes())
 		vals = vals[:0]
-		_, err = readVarintRLE(vals, r)
+		_, err = ReadFrom(vals, r)
 		if err != nil && err != io.EOF {
 			b.Fatal(err)
 		}
