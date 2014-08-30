@@ -118,7 +118,7 @@ func ReadFrom(vals []int64, r io.Reader) ([]int64, error) {
 		_, err := io.ReadFull(r, buf[:1])
 		if err != nil {
 			if err == io.EOF {
-				return vals, err
+				return vals, nil
 			}
 			return nil, err
 		}
@@ -141,5 +141,4 @@ func ReadFrom(vals []int64, r io.Reader) ([]int64, error) {
 			vals = append(vals, unzigzag(val))
 		}
 	}
-	return vals, nil
 }
