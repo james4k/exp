@@ -47,7 +47,7 @@ func randIntSlice(perms int) []int64 {
 	return vals
 }
 
-func TestWriteVarintRLE(t *testing.T) {
+func TestVarintRLE(t *testing.T) {
 	table := map[int64][]byte{
 		0:         []byte{nbytes(1, 0)},
 		-1:        []byte{nbytes(1, 1), 1},
@@ -66,7 +66,7 @@ func TestWriteVarintRLE(t *testing.T) {
 	buf := &bytes.Buffer{}
 	for input, expected := range table {
 		buf.Reset()
-		err := WriteTo(buf, []int64{input})
+		err := WriteRun(buf, []int64{input})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -77,17 +77,21 @@ func TestWriteVarintRLE(t *testing.T) {
 	}
 }
 
-func TestVarintRLE(t *testing.T) {
+func TestVarintRLERandom(t *testing.T) {
 	var vals, actual []int64
 	vals = randIntSlice(20)
 	buf := &bytes.Buffer{}
-	err := WriteTo(buf, vals)
+	err := WriteRun(buf, vals)
 	if err != nil {
 		t.Fatal(err)
 	}
-	actual, err = ReadFrom(actual, buf)
+	actual = make([]int64, len(vals))
+	n, err := ReadRun(actual, buf)
 	if err != nil && err != io.EOF {
 		t.Fatal(err)
+	}
+	if n != len(actual) {
+		t.Fatalf("did not read expected number of values")
 	}
 	if !reflect.DeepEqual(vals, actual) {
 		t.Fatalf("did not match expected output")
@@ -97,9 +101,10 @@ func TestVarintRLE(t *testing.T) {
 func BenchmarkWriteVarintRLERandom(b *testing.B) {
 	rand.Seed(1)
 	vals := randIntSlice(100)
+	b.SetBytes(100 * 8)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		err := WriteTo(ioutil.Discard, vals)
+		err := WriteRun(ioutil.Discard, vals)
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -109,16 +114,17 @@ func BenchmarkWriteVarintRLERandom(b *testing.B) {
 func BenchmarkReadVarintRLERandom(b *testing.B) {
 	rand.Seed(1)
 	vals := randIntSlice(100)
+	b.SetBytes(100 * 8)
 	buf := bytes.NewBuffer(make([]byte, 0, len(vals)*4))
-	err := WriteTo(buf, vals)
+	err := WriteRun(buf, vals)
 	if err != nil {
 		b.Fatal(err)
 	}
+	r := bytes.NewReader(buf.Bytes())
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		r := bytes.NewReader(buf.Bytes())
-		vals = vals[:0]
-		_, err = ReadFrom(vals, r)
+		r.Seek(0, 0)
+		_, err = ReadRun(vals, r)
 		if err != nil && err != io.EOF {
 			b.Fatal(err)
 		}

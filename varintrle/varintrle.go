@@ -10,6 +10,7 @@ package varintrle
 
 import (
 	"bytes"
+	"errors"
 	"io"
 )
 
@@ -45,11 +46,11 @@ func unzigzag(ux uint64) int64 {
 	return x
 }
 
-// WriteTo writes to w a number of integer values using a modified
+// WriteRun writes to w a number of integer values using a modified
 // varint encoding that is optimal for runs of integers of the same size
 // requirements in bytes. Runs of zeros are especially optimal, taking
 // O(1) space.
-func WriteTo(w io.Writer, vals []int64) error {
+func WriteRun(w io.Writer, vals []int64) error {
 	if len(vals) == 0 {
 		return nil
 	}
@@ -110,35 +111,43 @@ func WriteTo(w io.Writer, vals []int64) error {
 	return nil
 }
 
-// ReadFrom appends all integers read from r to vals and returns
-// the new slice.
-func ReadFrom(vals []int64, r io.Reader) ([]int64, error) {
+// ReadRun reads all integers read from r into vals, up to len(vals),
+// and returns the number of values read. If number of values read is
+// less than len(vals), an error is returned. If the bytes decode into
+// more values than len(vals), an error is returned.
+func ReadRun(vals []int64, r io.Reader) (int, error) {
 	var buf [8]byte
+	pos := 0
 	for {
 		_, err := io.ReadFull(r, buf[:1])
 		if err != nil {
 			if err == io.EOF {
-				return vals, nil
+				return pos, nil
 			}
-			return nil, err
+			return pos, err
 		}
 		n, bytes := getnbytes(buf[0])
+		if pos+n > len(vals) {
+			return pos, errors.New("varintrle: unexpected values to read")
+		}
 		if bytes == 0 {
 			for i := 0; i < n; i++ {
-				vals = append(vals, 0)
+				vals[pos+i] = 0
 			}
+			pos += n
 			continue
 		}
 		for i := 0; i < n; i++ {
 			_, err := io.ReadFull(r, buf[:bytes])
 			if err != nil {
-				return nil, err
+				return pos, err
 			}
 			var val uint64
 			for j := 0; j < bytes; j++ {
 				val |= uint64(buf[j]) << (uint64(j) * 8)
 			}
-			vals = append(vals, unzigzag(val))
+			vals[pos] = unzigzag(val)
+			pos++
 		}
 	}
 }
