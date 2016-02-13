@@ -119,6 +119,9 @@ func ReadRun(vals []int64, r io.Reader) (int, error) {
 	var buf [8]byte
 	pos := 0
 	for {
+		if pos >= len(vals) {
+			return pos, nil
+		}
 		_, err := io.ReadFull(r, buf[:1])
 		if err != nil {
 			if err == io.EOF {
