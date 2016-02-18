@@ -4,8 +4,7 @@
 // TODO: get into detail on the format. described briefly in WriteTo's
 // comment.
 //
-// There have been no real tests done to see how this fairs against
-// general compression algorithms.
+// TODO: re-design to be friendly to vector and parallel computation.
 package varintrle
 
 import (
