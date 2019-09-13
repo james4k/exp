@@ -13,6 +13,9 @@ import (
 	"io"
 )
 
+var getnbytesLUT = [8]int{0, 1, 2, 3, 4, 5, 6, 8}
+var unzigzagLUT = [2]int64{0, -1}
+
 func nbytes(n, bytes int) uint8 {
 	if bytes == 8 {
 		bytes = 7
@@ -21,12 +24,12 @@ func nbytes(n, bytes int) uint8 {
 }
 
 func getnbytes(b uint8) (n, bytes int) {
-	n = int((b>>3)&0x1f) + 1
-	bytes = int(b & 0x7)
-	if bytes == 7 {
-		bytes = 8
-	}
-	return
+	//n = int((b>>3)&0x1f) + 1
+	//bytes = int(b & 0x7)
+	//if bytes == 7 {
+	//	bytes = 8
+	//}
+	return int((b>>3)&0x1f) + 1, getnbytesLUT[b & 0x7]
 }
 
 func zigzag(x int64) uint64 {
@@ -38,11 +41,12 @@ func zigzag(x int64) uint64 {
 }
 
 func unzigzag(ux uint64) int64 {
-	x := int64(ux >> 1)
-	if ux&1 != 0 {
-		x = ^x
-	}
-	return x
+	//x := int64(ux >> 1)
+	//if ux&1 != 0 {
+	//	x = ^x
+	//}
+	//return x
+	return int64(ux >> 1) ^ unzigzagLUT[ux&1]
 }
 
 // WriteRun writes to w a number of integer values using a modified
