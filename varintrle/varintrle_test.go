@@ -86,7 +86,20 @@ func TestVarintRLERandom(t *testing.T) {
 		t.Fatal(err)
 	}
 	actual = make([]int64, len(vals))
-	n, err := ReadRun(actual, buf)
+	n, nb, err := ReadRunFromBytes(actual, buf.Bytes())
+	if err != nil && err != io.EOF {
+		t.Fatal(err)
+	}
+	if n != len(actual) {
+		t.Fatalf("did not read expected number of values")
+	}
+	if !reflect.DeepEqual(vals, actual) {
+		t.Fatalf("did not match expected output")
+	}
+	if nb != buf.Len() {
+		t.Fatalf("did not read expected number of bytes")
+	}
+	n, err = ReadRun(actual, buf)
 	if err != nil && err != io.EOF {
 		t.Fatal(err)
 	}
@@ -125,6 +138,24 @@ func BenchmarkReadVarintRLERandom(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		r.Seek(0, 0)
 		_, err = ReadRun(vals, r)
+		if err != nil && err != io.EOF {
+			b.Fatal(err)
+		}
+	}
+}
+
+func BenchmarkReadVarintRLERandom2(b *testing.B) {
+	rand.Seed(1)
+	vals := randIntSlice(100)
+	b.SetBytes(100 * 8)
+	buf := bytes.NewBuffer(make([]byte, 0, len(vals)*4))
+	err := WriteRun(buf, vals)
+	if err != nil {
+		b.Fatal(err)
+	}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _, err = ReadRunFromBytes(vals, buf.Bytes())
 		if err != nil && err != io.EOF {
 			b.Fatal(err)
 		}

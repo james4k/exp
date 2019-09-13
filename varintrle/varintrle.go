@@ -157,3 +157,46 @@ func ReadRun(vals []int64, r io.Reader) (int, error) {
 		}
 	}
 }
+
+// ReadRunFromBytes
+func ReadRunFromBytes(vals []int64, buf []byte) (valsParsed int, bytesRead int, err error) {
+	pos := 0
+	index := 0
+	for {
+		if pos >= len(vals) {
+			break
+		}
+		if len(buf) <= 0 {
+			break
+		}
+		n, bytes := getnbytes(buf[index])
+		index++
+		if pos+n > len(vals) {
+			err = errors.New("varintrle: unexpected values to read")
+			break
+		}
+		if bytes == 0 {
+			for i := 0; i < n; i++ {
+				vals[pos+i] = 0
+			}
+			pos += n
+			continue
+		}
+		if len(buf) - index < bytes*n {
+			err = io.EOF
+			break
+		}
+		for i := 0; i < n; i++ {
+			var val uint64
+			for j := 0; j < bytes; j++ {
+				val |= uint64(buf[index]) << (uint64(j) * 8)
+				index++
+			}
+			vals[pos] = unzigzag(val)
+			pos++
+		}
+	}
+	valsParsed = pos
+	bytesRead = index
+	return
+}
